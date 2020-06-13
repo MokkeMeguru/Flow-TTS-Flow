@@ -4,6 +4,16 @@ import tensorflow as tf
 
 
 class GTU(tf.keras.layers.Layer):
+    """GTU layer proposed in Flow-TTS
+
+    Notes:
+
+        * formula
+            .. math::
+
+                z = tanh(W_{f, k} \star y) \odot sigmoid(W_{g, k} \star c)
+    """
+
     def __init__(self, **kwargs):
         super().__init__()
 
@@ -35,11 +45,15 @@ class GTU(tf.keras.layers.Layer):
     def call(self, y: tf.Tensor, c: tf.Tensor, **kwargs):
         """
         Args:
+
             y (tf.Tensor): input contents tensor [B, T, C]
             c (tf.Tensor): input conditional tensor [B, T, C'] where C' can be different with C
+
         Returns:
+
             tf.Tensor: [B, T, C]
         """
+
         right = tf.nn.tanh(self.conv_first(y))
         left = tf.nn.sigmoid(self.conv_last(c))
         z = right * left
@@ -89,7 +103,6 @@ def CouplingBlock(x: tf.Tensor, c: tf.Tensor, depth, **kwargs):
         <tf.Tensor 'model_3/Identity:0' shape=(None, 16, 32) dtype=float32>
     """
     input_shape = x.shape
-    cond_shape = c.shape
 
     conv1x1_1 = tf.keras.layers.Conv1D(
         depth,
