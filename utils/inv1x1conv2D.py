@@ -31,30 +31,57 @@ class Inv1x1Conv2D(FlowComponent):
         config.update(config_update)
         return config
 
-    def forward(self, x: tf.Tensor, **kwargs):
+    def forward(self, x: tf.Tensor, mask: tf.Tensor = None, **kwargs):
+        """
+        Args:
+            x    (tf.Tensor): base input tensor [B, T, C]
+            mask (tf.Tensor): mask input tensor [B, T]
+
+        Returns:
+            z    (tf.Tensor): latent variable tensor [B, T, C]
+            ldj  (tf.Tensor): log det jacobian [B]
+
+        Notes:
+            | mask's example
+            | [[True, True, True, False],
+            |  [True, False, False, False],
+            |  [True, True, True, True],
+            |  [True, True, True, True]]
+        """
         W = self.W + tf.eye(self.c) * 1e-5
         _W = tf.reshape(W, [1, self.c, self.c])
         z = tf.nn.conv1d(x, _W, [1, 1, 1], "SAME")
         # scalar
         log_det_jacobian = tf.cast(
-            tf.linalg.slogdet(tf.cast(W, tf.float64))[1] * self.t, tf.float32,
+            tf.linalg.slogdet(tf.cast(W, tf.float64))[1], tf.float32,
         )
+
         # expand as batch
-        log_det_jacobian = tf.broadcast_to(log_det_jacobian, tf.shape(x)[0:1])
+        if mask is not None:
+            log_det_jacobian = log_det_jacobian * tf.reduce_sum(mask, axis=[-1])
+        else:
+            log_det_jacobian = tf.broadcast_to(
+                log_det_jacobian * self.t, tf.shape(x)[0:1]
+            )
         return z, log_det_jacobian
 
-    def inverse(self, z: tf.Tensor, **kwargs):
+    def inverse(self, z: tf.Tensor, mask: tf.Tensor = None, **kwargs):
         W = self.W + tf.eye(self.c) * 1e-5
         _W = tf.reshape(tf.linalg.inv(W), [1, self.c, self.c])
         x = tf.nn.conv1d(z, _W, [1, 1, 1], "SAME")
 
         inverse_log_det_jacobian = tf.cast(
-            -1 * tf.linalg.slogdet(tf.cast(W, tf.float64))[1] * self.t, tf.float32,
+            -1 * tf.linalg.slogdet(tf.cast(W, tf.float64))[1], tf.float32,
         )
 
-        inverse_log_det_jacobian = tf.broadcast_to(
-            inverse_log_det_jacobian, tf.shape(z)[0:1]
-        )
+        if mask is not None:
+            inverse_log_det_jacobian = inverse_log_det_jacobian * tf.reduce_sum(
+                tf.cast(mask, tf.float32), axis=[-1]
+            )
+        else:
+            inverse_log_det_jacobian = tf.broadcast_to(
+                inverse_log_det_jacobian * self.t, tf.shape(z)[0:1]
+            )
         return x, inverse_log_det_jacobian
 
 
