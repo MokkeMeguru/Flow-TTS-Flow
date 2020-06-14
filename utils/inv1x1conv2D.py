@@ -42,22 +42,27 @@ class Inv1x1Conv2D(FlowComponent):
             ldj  (tf.Tensor): log det jacobian [B]
 
         Notes:
-            | mask's example
-            | [[True, True, True, False],
-            |  [True, False, False, False],
-            |  [True, True, True, True],
-            |  [True, True, True, True]]
+            * mask's example
+                | [[True, True, True, False],
+                |  [True, False, False, False],
+                |  [True, True, True, True],
+                |  [True, True, True, True]]
         """
         W = self.W + tf.eye(self.c) * 1e-5
         _W = tf.reshape(W, [1, self.c, self.c])
         z = tf.nn.conv1d(x, _W, [1, 1, 1], "SAME")
+
         # scalar
+        # tf.math.log(tf.abs(tf.linalg.det(W))) == tf.linalg.slogdet(W)[1]
         log_det_jacobian = tf.cast(
             tf.linalg.slogdet(tf.cast(W, tf.float64))[1], tf.float32,
         )
 
         # expand as batch
         if mask is not None:
+            # mask -> mask_tensor: [B, T] -> [B, T, 1]
+            mask_tensor = tf.expand_dims(tf.cast(mask, tf.float32), [-1])
+            z = z * mask_tensor
             log_det_jacobian = log_det_jacobian * tf.reduce_sum(mask, axis=[-1])
         else:
             log_det_jacobian = tf.broadcast_to(
@@ -75,6 +80,9 @@ class Inv1x1Conv2D(FlowComponent):
         )
 
         if mask is not None:
+            # mask -> mask_tensor: [B, T] -> [B, T, 1]
+            mask_tensor = tf.expand_dims(tf.cast(mask, tf.float32), [-1])
+            x = x * mask_tensor
             inverse_log_det_jacobian = inverse_log_det_jacobian * tf.reduce_sum(
                 tf.cast(mask, tf.float32), axis=[-1]
             )

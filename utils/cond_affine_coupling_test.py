@@ -3,8 +3,8 @@
 import numpy as np
 import tensorflow as tf
 from TFGENZOO.flows import AffineCoupling, AffineCouplingMask
-from TFGENZOO.flows.cond_affine_coupling import ConditionalAffineCoupling
 from coupling_block import CouplingBlock
+from utils.cond_affine_coupling import ConditionalAffineCoupling
 
 
 class AffineCouplingTest(tf.test.TestCase):
