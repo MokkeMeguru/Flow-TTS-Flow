@@ -15,7 +15,6 @@ class Inv1x1Conv2D(FlowComponent):
 
     def build(self, input_shape: tf.TensorShape):
         _, t, c = input_shape
-        self.t = t
         self.c = c
         self.W = self.add_weight(
             name="W",
@@ -48,6 +47,7 @@ class Inv1x1Conv2D(FlowComponent):
                 |  [True, True, True, True],
                 |  [True, True, True, True]]
         """
+        _, t, _ = x.shape
         W = self.W + tf.eye(self.c) * 1e-5
         _W = tf.reshape(W, [1, self.c, self.c])
         z = tf.nn.conv1d(x, _W, [1, 1, 1], "SAME")
@@ -65,12 +65,11 @@ class Inv1x1Conv2D(FlowComponent):
             z = z * mask_tensor
             log_det_jacobian = log_det_jacobian * tf.reduce_sum(mask, axis=[-1])
         else:
-            log_det_jacobian = tf.broadcast_to(
-                log_det_jacobian * self.t, tf.shape(x)[0:1]
-            )
+            log_det_jacobian = tf.broadcast_to(log_det_jacobian * t, tf.shape(x)[0:1])
         return z, log_det_jacobian
 
     def inverse(self, z: tf.Tensor, mask: tf.Tensor = None, **kwargs):
+        _, t, _ = z.shape
         W = self.W + tf.eye(self.c) * 1e-5
         _W = tf.reshape(tf.linalg.inv(W), [1, self.c, self.c])
         x = tf.nn.conv1d(z, _W, [1, 1, 1], "SAME")
@@ -88,7 +87,7 @@ class Inv1x1Conv2D(FlowComponent):
             )
         else:
             inverse_log_det_jacobian = tf.broadcast_to(
-                inverse_log_det_jacobian * self.t, tf.shape(z)[0:1]
+                inverse_log_det_jacobian * t, tf.shape(z)[0:1]
             )
         return x, inverse_log_det_jacobian
 

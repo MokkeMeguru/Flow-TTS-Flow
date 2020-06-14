@@ -102,7 +102,7 @@ def CouplingBlock(x: tf.Tensor, cond: tf.Tensor, depth, **kwargs):
         >>> cp([x, c])
         <tf.Tensor 'model_1/Identity:0' shape=(None, None, 64) dtype=float32>
     """
-    input_shape = x.shape
+    last_channel = x.shape[-1]
     c = cond
 
     conv1x1_1 = tf.keras.layers.Conv1D(
@@ -114,20 +114,23 @@ def CouplingBlock(x: tf.Tensor, cond: tf.Tensor, depth, **kwargs):
         use_bias=False,
         activation="relu",
     )
+
+    gtu = GTU()
+
     conv1x1_2 = tf.keras.layers.Conv1D(
-        input_shape[-1] * 2,
+        last_channel * 2,
         kernel_size=1,
         strides=1,
         padding="same",
         data_format="channels_last",
         kernel_initializer="zeros",
+        use_bias=False,
     )
-    gtu = GTU()
 
     y = x
     y = conv1x1_1(y)
-    skip_connection = y
-    y = gtu(y, c)
-    y += skip_connection
+    z = gtu(y, c)
+    y = tf.keras.layers.Add()([z, y])
     y = conv1x1_2(y)
-    return tf.keras.Model([x, c], y)
+    model = tf.keras.Model([x, c], y)
+    return model

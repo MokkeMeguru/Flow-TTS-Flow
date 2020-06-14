@@ -42,6 +42,16 @@ class ConditionalAffineCouplingWithMask(ConditionalAffineCoupling):
            | scale > 0 because exp(x) > 0
     """
 
+    def build(self, input_shape: tf.TensorShape):
+        self.reduce_axis = list(range(len(input_shape)))[1:]
+        if self.scale_shift_net is None:
+            resnet_inputs = [None for _ in range(len(input_shape) - 1)]
+            resnet_inputs[-1] = int(input_shape[-1] / 2)
+            self.scale_shift_net = self.scale_shift_net_template(
+                tf.keras.layers.Input(resnet_inputs)
+            )
+        super().build(input_shape)
+
     def forward(self, x: tf.Tensor, cond: tf.Tensor, mask: tf.Tensor = None, **kwargs):
         """
         Args:
@@ -71,9 +81,10 @@ class ConditionalAffineCouplingWithMask(ConditionalAffineCoupling):
 
             # apply mask into scale, shift
             # mask -> mask_tensor: [B, T] -> [B, T, 1]
-            mask_tensor = tf.expand_dims(tf.cast(mask, tf.float32), [-1])
-            scale *= mask_tensor
-            shift *= mask_tensor
+            if mask is not None:
+                mask_tensor = tf.expand_dims(tf.cast(mask, tf.float32), [-1])
+                scale *= mask_tensor
+                shift *= mask_tensor
             z2 = (x2 + shift) * scale
 
             # scale's shape is [B, T, C]
@@ -93,9 +104,10 @@ class ConditionalAffineCouplingWithMask(ConditionalAffineCoupling):
 
             scale = self.scale_func(log_scale)
 
-            mask_tensor = tf.expand_dims(tf.cast(mask, tf.float32), [-1])
-            scale *= mask_tensor
-            shift *= mask_tensor
+            if mask is not None:
+                mask_tensor = tf.expand_dims(tf.cast(mask, tf.float32), [-1])
+                scale *= mask_tensor
+                shift *= mask_tensor
             x2 = (z2 / scale) - shift
 
             inverse_log_det_jacobian = -1 * tf.reduce_sum(
