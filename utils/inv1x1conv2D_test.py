@@ -10,7 +10,7 @@ class Inv1x1Conv2DTest(tf.test.TestCase):
     def setUp(self):
         super(Inv1x1Conv2DTest, self).setUp()
         self.inv1x1conv2D = Inv1x1Conv2D()
-        self.inv1x1conv2D.build((None, 16, 16))
+        self.inv1x1conv2D.build((None, None, 16))
 
     def testInv1x1Conv2DOutputShape(self):
         x = tf.random.normal([1024, 16, 16])

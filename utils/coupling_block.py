@@ -60,7 +60,7 @@ class GTU(tf.keras.layers.Layer):
         return z
 
 
-def CouplingBlock(x: tf.Tensor, c: tf.Tensor, depth, **kwargs):
+def CouplingBlock(x: tf.Tensor, cond: tf.Tensor, depth, **kwargs):
     """
     Args:
 
@@ -74,35 +74,36 @@ def CouplingBlock(x: tf.Tensor, c: tf.Tensor, depth, **kwargs):
 
         >>> import tensorflow as tf
         >>> from utils.coupling_block import CouplingBlock
-        >>> x = tf.keras.Input([16, 32])
-        >>> c = tf.keras.Input([16, 128])
-        >>> cp = CouplingBlock(x, c, depth=128)
+        >>> x = tf.keras.layers.Input([None, 32])
+        >>> c = tf.keras.layers.Input([None, 128])
+        >>> cp = CouplingBlock(x, c, depth=256)
         >>> cp.summary()
         Model: "model"
         __________________________________________________________________________________________________
         Layer (type)                    Output Shape         Param #     Connected to
         ==================================================================================================
-        input_1 (InputLayer)            [(None, 16, 32)]     0
+        input_1 (InputLayer)            [(None, None, 32)]   0
         __________________________________________________________________________________________________
-        conv1d_2 (Conv1D)               (None, 16, 128)      4096        input_1[0][0]
+        conv1d (Conv1D)                 (None, None, 256)    8192        input_1[0][0]
         __________________________________________________________________________________________________
-        input_2 (InputLayer)            [(None, 16, 128)]    0
+        input_2 (InputLayer)            [(None, None, 128)]  0
         __________________________________________________________________________________________________
-        gtu_1 (GTU)                     (None, 16, 128)      33024       conv1d_2[0][0]
+        gtu (GTU)                       (None, None, 256)    98816       conv1d[0][0]
         __________________________________________________________________________________________________
-        tf_op_layer_AddV2 (TensorFlowOp [(None, 16, 128)]    0           gtu_1[0][0]
-                                                                        conv1d_2[0][0]
+        tf_op_layer_AddV2 (TensorFlowOp [(None, None, 256)]  0           gtu[0][0]
+                                                                        conv1d[0][0]
         __________________________________________________________________________________________________
-        conv1d_3 (Conv1D)               (None, 16, 32)       4128        tf_op_layer_AddV2[0][0]
+        conv1d_1 (Conv1D)               (None, None, 64)     16448       tf_op_layer_AddV2[0][0]
         ==================================================================================================
-        Total params: 41,248
-        Trainable params: 41,248
+        Total params: 123,456
+        Trainable params: 123,456
         Non-trainable params: 0
         __________________________________________________________________________________________________
         >>> cp([x, c])
-        <tf.Tensor 'model_3/Identity:0' shape=(None, 16, 32) dtype=float32>
+        <tf.Tensor 'model_1/Identity:0' shape=(None, None, 64) dtype=float32>
     """
     input_shape = x.shape
+    c = cond
 
     conv1x1_1 = tf.keras.layers.Conv1D(
         depth,
@@ -114,7 +115,7 @@ def CouplingBlock(x: tf.Tensor, c: tf.Tensor, depth, **kwargs):
         activation="relu",
     )
     conv1x1_2 = tf.keras.layers.Conv1D(
-        input_shape[-1],
+        input_shape[-1] * 2,
         kernel_size=1,
         strides=1,
         padding="same",

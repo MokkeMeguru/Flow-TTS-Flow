@@ -10,7 +10,7 @@ ptvsd = "*"
 pylint = "*"
 
 [packages]
-tfgenzoo = "==1.1.0"
+tfgenzoo = {git = "https://github.com/MokkeMeguru/TFGENZOO.git",ref = "master"}
 
 [requires]
 python_version = "3.7"

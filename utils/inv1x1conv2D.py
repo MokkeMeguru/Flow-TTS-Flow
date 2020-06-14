@@ -56,3 +56,13 @@ class Inv1x1Conv2D(FlowComponent):
             inverse_log_det_jacobian, tf.shape(z)[0:1]
         )
         return x, inverse_log_det_jacobian
+
+
+if __name__ == "__main__":
+    inv1x1conv2D = Inv1x1Conv2D()
+    inv1x1conv2D.build((None, 32, 16))
+    inputs = tf.keras.layers.Input([None, 16])
+    model = tf.keras.Model(inputs, inv1x1conv2D(inputs))
+    model.summary()
+    y, ldj = model(tf.random.normal([128, 12, 16]))
+    print(y.shape)
