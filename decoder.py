@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from TFGENZOO.flows import FactorOutBase
 from utils.flow_step import build_flow_step
-from utils.factor_out import FactorOut
+from utils.factor_out import FactorOutWithMask
 from utils.squeeze2D import Squeeze2D
 
 
@@ -29,7 +29,7 @@ class FlowTTSDecoder(tf.keras.Model):
             scale_type=self.hparams["scale_type"],
         )
 
-        factor_out_1 = FactorOut(
+        factor_out_1 = FactorOutWithMask(
             with_zaux=False, conditional=self.hparams["conditional_factor_out"]
         )
 
@@ -40,7 +40,7 @@ class FlowTTSDecoder(tf.keras.Model):
             scale_type=self.hparams["scale_type"],
         )
 
-        factor_out_2 = FactorOut(
+        factor_out_2 = FactorOutWithMask(
             with_zaux=True, conditional=self.hparams["conditional_factor_out"]
         )
 
