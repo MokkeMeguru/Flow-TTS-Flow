@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import tensorflow as tf
-from utils.inv1x1conv2D import Inv1x1Conv2D
+from utils.inv1x1conv2D import Inv1x1Conv2DWithMask
 from utils.coupling_block import CouplingBlock
 from TFGENZOO.flows.flowbase import ConditionalFlowModule
 from utils.cond_affine_coupling import ConditionalAffineCouplingWithMask
@@ -45,7 +45,7 @@ def build_flow_step(
         #    FLow-TTS's Figure 1 (b)
 
         # Inv1x1Conv
-        inv1x1 = Inv1x1Conv2D()
+        inv1x1 = Inv1x1Conv2DWithMask()
 
         # CouplingBlock
         couplingBlockTemplate = CouplingBlockTemplate

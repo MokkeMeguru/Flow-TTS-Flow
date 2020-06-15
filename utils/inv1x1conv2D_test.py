@@ -3,13 +3,13 @@
 import numpy as np
 import tensorflow as tf
 
-from utils.inv1x1conv2D import Inv1x1Conv2D
+from utils.inv1x1conv2D import Inv1x1Conv2DWithMask
 
 
 class Inv1x1Conv2DTest(tf.test.TestCase):
     def setUp(self):
         super().setUp()
-        self.inv1x1conv2D = Inv1x1Conv2D()
+        self.inv1x1conv2D = Inv1x1Conv2DWithMask()
         self.inv1x1conv2D.build((None, None, 16))
 
     def testInv1x1Conv2DOutputShape(self):
