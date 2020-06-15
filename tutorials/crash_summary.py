@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
-
-from typing import Tuple
-
-import numpy as np
 import tensorflow as tf
-
-from TFGENZOO.flows.inv1x1conv import regular_matrix_init
-from TFGENZOO.flows.flowbase import FlowComponent
+from TFGENZOO.flows.flowbase import FlowBase
 
 
-class Inv1x1Conv2DWithMask(FlowComponent):
+class Inv1x1Conv2D(FlowBase):
     def __init__(self, **kwargs):
         super().__init__()
 
@@ -17,10 +11,7 @@ class Inv1x1Conv2DWithMask(FlowComponent):
         _, t, c = input_shape
         self.c = c
         self.W = self.add_weight(
-            name="W",
-            shape=(c, c),
-            regularizer=tf.keras.regularizers.l2(0.01),
-            initializer=regular_matrix_init,
+            name="W", shape=(c, c), regularizer=tf.keras.regularizers.l2(0.01)
         )
         super().build(input_shape)
 
@@ -29,6 +20,12 @@ class Inv1x1Conv2DWithMask(FlowComponent):
         config_update = {}
         config.update(config_update)
         return config
+
+    def call(self, x, inverse=False):
+        if inverse:
+            return self.inverse(x)
+        else:
+            return self.forward(x)
 
     def forward(self, x: tf.Tensor, mask: tf.Tensor = None, **kwargs):
         """
@@ -63,11 +60,9 @@ class Inv1x1Conv2DWithMask(FlowComponent):
             # mask -> mask_tensor: [B, T] -> [B, T, 1]
             mask_tensor = tf.expand_dims(tf.cast(mask, tf.float32), [-1])
             z = z * mask_tensor
-            log_det_jacobian = log_det_jacobian * tf.reduce_sum(
-                tf.cast(mask, tf.float32), axis=[-1]
-            )
+            log_det_jacobian = log_det_jacobian * tf.reduce_sum(mask, axis=[-1])
         else:
-            log_det_jacobian = tf.broadcast_to(log_det_jacobian * t, tf.shape(x)[0:1])
+            log_det_jacobian = log_det_jacobian * t
         return z, log_det_jacobian
 
     def inverse(self, z: tf.Tensor, mask: tf.Tensor = None, **kwargs):
@@ -94,11 +89,55 @@ class Inv1x1Conv2DWithMask(FlowComponent):
         return x, inverse_log_det_jacobian
 
 
+class SubClass(tf.keras.layers.Layer):
+    def build(self, input_shape):
+        self.dense1 = tf.keras.layers.Dense(128)
+        self.dense2 = tf.keras.layers.Dense(64)
+        super().build(input_shape)
+
+    def init(self):
+        super().__init__()
+
+    def call(self, x):
+        return self.dense2(self.dense1(x))
+
+
+class SubSubClass(tf.keras.layers.Layer):
+    def init(self):
+        super().__init__()
+
+    def build(self, input_shape):
+        self.subc = [SubClass()]
+        super().build(input_shape)
+
+    def call(self, x, inverse=False):
+        if inverse:
+            return self.inverse(x)
+        else:
+            return self.forward(x)
+
+    def forward(self, x):
+        for l in reversed(self.subc):
+
+            x = l(x)
+        return x
+
+    def inverse(self, x):
+        for l in self.subc:
+            x = l(x)
+        return x
+
+
+class CustomModel(tf.keras.Model):
+    def __init__(self):
+        super().__init__()
+        self.mylayer = Inv1x1Conv2D()  # SubSubClass()
+
+    def call(self, x):
+        return self.mylayer(x)
+
+
 if __name__ == "__main__":
-    inv1x1conv2D = Inv1x1Conv2DWithMask()
-    inv1x1conv2D.build((None, 32, 16))
-    inputs = tf.keras.layers.Input([None, 16])
-    model = tf.keras.Model(inputs, inv1x1conv2D(inputs))
+    model = CustomModel()
+    model(tf.random.normal([32, 32, 12]))
     model.summary()
-    y, ldj = model(tf.random.normal([128, 12, 16]))
-    print(y.shape)

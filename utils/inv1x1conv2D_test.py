@@ -3,12 +3,12 @@
 import numpy as np
 import tensorflow as tf
 
-from inv1x1conv2D import Inv1x1Conv2D
+from utils.inv1x1conv2D import Inv1x1Conv2D
 
 
 class Inv1x1Conv2DTest(tf.test.TestCase):
     def setUp(self):
-        super(Inv1x1Conv2DTest, self).setUp()
+        super().setUp()
         self.inv1x1conv2D = Inv1x1Conv2D()
         self.inv1x1conv2D.build((None, None, 16))
 

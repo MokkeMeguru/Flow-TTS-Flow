@@ -111,7 +111,7 @@ class ConditionalAffineCouplingWithMask(ConditionalAffineCoupling):
             x2 = (z2 / scale) - shift
 
             inverse_log_det_jacobian = -1 * tf.reduce_sum(
-                tf.mash.log(scale), axis=self.reduce_axis
+                tf.math.log(scale), axis=self.reduce_axis
             )
             return tf.concat([x1, x2], axis=-1), inverse_log_det_jacobian
         else:

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
-from typing import Dict
 import tensorflow as tf
-from inv1x1conv2D import Inv1x1Conv2D
-from coupling_block import GTU, CouplingBlock
+from utils.inv1x1conv2D import Inv1x1Conv2D
+from utils.coupling_block import CouplingBlock
 from TFGENZOO.flows.flowbase import ConditionalFlowModule
-from cond_affine_coupling import ConditionalAffineCouplingWithMask
+from utils.cond_affine_coupling import ConditionalAffineCouplingWithMask
 
 
 def build_flow_step(
@@ -49,7 +48,7 @@ def build_flow_step(
         inv1x1 = Inv1x1Conv2D()
 
         # CouplingBlock
-        couplingBlock_template = CouplingBlockTemplate
+        couplingBlockTemplate = CouplingBlockTemplate
 
         # Affine_xform + Coupling Block
         #
@@ -77,17 +76,17 @@ def build_flow_step(
         #         |  where W_{f, k} and W_{g, k} are 1-D convolution
         #
         conditionalAffineCoupling = ConditionalAffineCouplingWithMask(
-            scale_shift_net_template=couplingBlock_template, scale_type=scale_type
+            scale_shift_net_template=couplingBlockTemplate, scale_type=scale_type
         )
         cfml.append(inv1x1)
         cfml.append(conditionalAffineCoupling)
     return ConditionalFlowModule(cfml)
 
 
-class Model(tf.keras.Model):
+class _Model(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        cond = tf.keras.Input([32, 128])
+        cond = tf.keras.Input([32, 128], name="conditional_input")
         self.flow_step = build_flow_step(
             step_num=4, coupling_depth=256, conditional_input=cond
         )
@@ -96,12 +95,28 @@ class Model(tf.keras.Model):
         return self.flow_step(x, cond=c, inverse=inverse)
 
 
-if __name__ == "__main__":
+def logging_test():
+    logdir = "logs"
+    writer = tf.summary.create_file_writer(logdir)
 
-    model = Model()
+    model = _Model()
     x = tf.random.normal([128, 32, 64])
+
     cond = tf.random.normal([128, 32, 128])
     z, ldj = model(x, cond, inverse=False)
+
+    dense = tf.keras.layers.Dense(128)
+
+    @tf.function
+    def my_func(x, cond):
+        y = model(x, cond, inverse=False)
+        return y
+
+    tf.summary.trace_on(graph=True)
+    y = my_func(x, cond)
+    with writer.as_default():
+        tf.summary.trace_export(name="flow_step", step=0, profiler_outdir=logdir)
+    tf.summary.trace_off()
     print(z.shape)
     print(ldj.shape)
     rev_x, ildj = model(z, cond)
@@ -114,3 +129,7 @@ if __name__ == "__main__":
     pprint.pprint([f.name for f in model.variables if f.trainable])
     print("non-trainable variables")
     pprint.pprint([f.name for f in model.variables if not f.trainable])
+
+
+if __name__ == "__main__":
+    logging_test()
